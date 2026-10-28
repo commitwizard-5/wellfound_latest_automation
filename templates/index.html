@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Autoply | Local AI Job Assistant</title>
+    <link rel="stylesheet" href="{{ url_for('static', path='styles.css') }}">
+  </head>
+  <body>
+    <main class="shell">
+      {% if is_running %}<meta http-equiv="refresh" content="3">{% endif %}
+      <header class="hero">
+        <div>
+          <p class="eyebrow">LOCAL-FIRST JOB WORKFLOW</p>
+          <h1>Autoply</h1>
+          <p class="subtitle">Discover roles, create résumé-grounded drafts, and stay in control of every submission.</p>
+        </div>
+        <div class="privacy-note"><span>●</span> App runs locally; AI uses Google Gemini</div>
+      </header>
+      <section class="notice" aria-label="AI data handling notice">
+        When cover-letter generation is used, extracted résumé text and links, along with the job description, are sent to the Google Gemini API using your API key. This app cannot guarantee how Google processes or retains that data. Review Google's current terms and use this feature only with the résumé owner's consent.
+      </section>
+      <section class="notice {{ 'notice-error' if error else '' }}" aria-live="polite">{{ message }}</section>
+      <section class="grid">
+        <article class="panel settings-panel">
+          <div class="panel-heading"><div><p class="eyebrow">STEP 1</p><h2>Local settings</h2></div><span class="pill {{ 'pill-safe' if not config_errors else '' }}">{{ 'Ready' if not config_errors else 'Needs setup' }}</span></div>
+          <form action="/settings" method="post" class="form-stack">
+            <label>Gemini API key<input name="api_key" type="password" autocomplete="off" placeholder="{{ 'Saved locally — leave blank to keep it' if config.api_key else 'Paste your Gemini API key' }}"></label>
+            <label>Firefox profile path<input name="profile_path" value="{{ config.profile_path }}" placeholder="C:\\Users\\you\\AppData\\Roaming\\Mozilla..."></label>
+            <label>Résumé PDF path<input name="resume_path" value="{{ config.resume_path }}" placeholder="C:\\Users\\you\\Documents\\resume.pdf"></label>
+            <button type="submit" class="button button-secondary">Save local settings</button>
+          </form>
+          {% if config_errors %}<ul class="errors">{% for item in config_errors %}<li>{{ item }}</li>{% endfor %}</ul>{% else %}<p class="small-text">Draft mode is active. Final submission is disabled by default.</p>{% endif %}
+        </article>
+        <article class="panel action-panel">
+          <p class="eyebrow">STEP 2</p><h2>Find matching jobs</h2><p>Search Wellfound, filter visible listings first, then load descriptions for likely matches.</p>
+          <form action="/jobs/import" method="post" class="filter-form">
+            <label>Country<input name="country" value="{{ filters.country }}" list="countries" placeholder="India"></label>
+            <datalist id="countries"><option value="India"><option value="United States"><option value="United Kingdom"><option value="Canada"><option value="Germany"><option value="Australia"></datalist>
+            <label>Job title keywords<input name="keyword" value="{{ filters.keyword }}" placeholder="Software Engineer"></label>
+            <div class="filter-row"><label>Company size<select name="company_size"><option value="">Any size</option>{% for size in ['1-10','11-50','51-200','201-500','501-1000','1001-5000','5001+'] %}<option value="{{ size }}" {{ 'selected' if filters.company_size == size else '' }}>{{ size }} employees</option>{% endfor %}</select></label><label>Employment<select name="employment_type"><option value="">Any type</option><option value="Full-time" {{ 'selected' if filters.employment_type == 'Full-time' else '' }}>Full-time</option><option value="Internship" {{ 'selected' if filters.employment_type == 'Internship' else '' }}>Internship</option><option value="Part-time" {{ 'selected' if filters.employment_type == 'Part-time' else '' }}>Part-time</option></select></label></div>
+            <div class="filter-row"><label>Import limit<select name="limit">{% for amount in ['10','30','50'] %}<option value="{{ amount }}" {{ 'selected' if filters.limit == amount else '' }}>{{ amount }} jobs</option>{% endfor %}</select></label><label class="toggle">Remote only<input type="checkbox" name="remote_only" value="true" {{ 'checked' if filters.remote_only == 'true' else '' }}><span>Only remote roles</span></label></div>
+            <button type="submit" class="button" {{ 'disabled' if is_running else '' }}>{{ 'Importing…' if is_running else 'Search and import jobs' }}</button>
+          </form>
+          <div class="safety-card"><strong>Human-in-the-loop</strong><span>Jobs are selected and reviewed here. Nothing is submitted automatically.</span></div>
+        </article>
+      </section>
+      <section class="panel jobs-panel">
+        <div class="panel-heading"><div><p class="eyebrow">STEP 3</p><h2>Review roles</h2></div><span class="job-count">{{ jobs|length }} imported</span></div>
+        {% if jobs %}
+        <form action="/applications/draft" method="post"><div class="job-list">
+          {% for job in jobs %}
+          <div class="job-card"><label class="job-select"><input type="checkbox" name="job_ids" value="{{ job.id }}"><span class="checkmark"></span><span class="job-main"><strong>{{ job.role }}</strong><span>{{ job.company }}</span></span></label><span class="job-meta"><span>{{ job.location or 'Location unavailable' }}</span><span>{{ job.stipend or 'Compensation unavailable' }}</span></span><a href="{{ job.link }}" target="_blank" rel="noreferrer">Open ↗</a><details><summary>Job description</summary><p>{{ job.description }}</p></details></div>
+          {% endfor %}
+        </div><button class="button" type="submit">Create application drafts</button></form>
+        {% else %}<div class="empty-state">Your imported roles will appear here for review.</div>{% endif %}
+      </section>
+    </main>
+  </body>
+</html>
